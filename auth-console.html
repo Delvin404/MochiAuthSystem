@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auth Console</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2f3a;
+    --text: #e7e9ee;
+    --muted: #8b93a7;
+    --accent: #5ee6a0;
+    --accent-dim: #2f5c46;
+    --danger: #ff6b6b;
+    --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --sans: 'Inter', -apple-system, system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 480px;
+  }
+
+  header {
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  .server-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .server-row input {
+    flex: 1;
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    align-self: center;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .status-dot.ok { background: var(--accent); }
+  .status-dot.bad { background: var(--danger); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .card h2 {
+    font-size: 1rem;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card h2 .tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: rgba(255,255,255,0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 400;
+  }
+
+  label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+    margin-top: 10px;
+  }
+  label:first-of-type { margin-top: 0; }
+
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: var(--sans);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+  .row > * { flex: 1; }
+
+  button {
+    margin-top: 14px;
+    width: 100%;
+    padding: 11px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #0d1410;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.05s;
+    font-family: var(--sans);
+  }
+  button:hover { opacity: 0.88; }
+  button:active { transform: scale(0.99); }
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  button.danger {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .result {
+    margin-top: 12px;
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+  }
+  .result.show { display: block; }
+  .result.success { color: var(--accent); border-color: var(--accent-dim); }
+  .result.error { color: var(--danger); border-color: #5c3030; }
+
+  .session-bar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--accent-dim);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+  }
+  .session-bar.show { display: flex; }
+  .session-bar .who {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .session-bar .email {
+    color: var(--muted);
+    font-size: 0.78rem;
+    display: block;
+  }
+  .session-bar button {
+    margin: 0;
+    width: auto;
+    padding: 7px 14px;
+    font-size: 0.78rem;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+  }
+  .tabs button {
+    margin: 0;
+    flex: 1;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 8px;
+    border-radius: 6px;
+  }
+  .tabs button.active {
+    background: var(--accent);
+    color: #0d1410;
+  }
+
+  .hidden { display: none !important; }
+
+  .footnote {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Auth Console</h1>
+    <p>Register, log in, and test your protected routes</p>
+  </header>
+
+  <div class="server-row">
+    <input id="baseUrl" type="text" value="http://localhost:5000" placeholder="API base URL">
+    <div class="status-dot" id="statusDot" title="Server status"></div>
+  </div>
+
+  <!-- Logged-in session bar -->
+  <div class="session-bar" id="sessionBar">
+    <div>
+      <span class="who" id="sessionName">—</span>
+      <span class="email" id="sessionEmail">—</span>
+    </div>
+    <button class="danger" id="logoutBtn">Log out</button>
+  </div>
+
+  <!-- Auth tabs (shown when logged out) -->
+  <div class="tabs" id="authTabs">
+    <button class="active" data-tab="login">Log in</button>
+    <button data-tab="register">Register</button>
+  </div>
+
+  <!-- Login card -->
+  <div class="card" id="loginCard">
+    <h2>Log in <span class="tag">POST /api/auth/login</span></h2>
+    <label for="loginEmail">Email</label>
+    <input id="loginEmail" type="email" placeholder="jane@example.com">
+    <label for="loginPassword">Password</label>
+    <input id="loginPassword" type="password" placeholder="••••••••">
+    <button id="loginBtn">Log in</button>
+    <div class="result" id="loginResult"></div>
+  </div>
+
+  <!-- Register card -->
+  <div class="card hidden" id="registerCard">
+    <h2>Register <span class="tag">POST /api/auth/register</span></h2>
+    <label for="regName">Name</label>
+    <input id="regName" type="text" placeholder="Jane Doe">
+    <label for="regEmail">Email</label>
+    <input id="regEmail" type="email" placeholder="jane@example.com">
+    <label for="regPassword">Password</label>
+    <input id="regPassword" type="password" placeholder="At least 8 characters, with a number">
+    <button id="registerBtn">Create account</button>
+    <div class="result" id="registerResult"></div>
+  </div>
+
+  <!-- Protected actions (shown when logged in) -->
+  <div class="card hidden" id="protectedCard">
+    <h2>Profile <span class="tag">GET /api/auth/me</span></h2>
+    <button class="secondary" id="profileBtn">Get my profile</button>
+    <div class="result" id="profileResult"></div>
+  </div>
+
+  <div class="card hidden" id="dashboardCard">
+    <h2>Dashboard <span class="tag">GET /api/users/dashboard</span></h2>
+    <button class="secondary" id="dashboardBtn">Load dashboard</button>
+    <div class="result" id="dashboardResult"></div>
+  </div>
+
+  <p class="footnote">Tokens are stored in memory only for this session — refreshing the page logs you out.</p>
+
+</div>
+
+<script>
+const els = {
+  baseUrl: document.getElementById('baseUrl'),
+  statusDot: document.getElementById('statusDot'),
+  authTabs: document.getElementById('authTabs'),
+  loginCard: document.getElementById('loginCard'),
+  registerCard: document.getElementById('registerCard'),
+  protectedCard: document.getElementById('protectedCard'),
+  dashboardCard: document.getElementById('dashboardCard'),
+  sessionBar: document.getElementById('sessionBar'),
+  sessionName: document.getElementById('sessionName'),
+  sessionEmail: document.getElementById('sessionEmail'),
+};
+
+let state = {
+  accessToken: null,
+  refreshToken: null,
+  user: null
+};
+
+function baseUrl() {
+  return els.baseUrl.value.trim().replace(/\/$/, '');
+}
+
+function showResult(elId, data, isError) {
+  const el = document.getElementById(elId);
+  el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+  el.classList.add('show');
+  el.classList.toggle('error', !!isError);
+  el.classList.toggle('success', !isError);
+}
+
+async function apiCall(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (state.accessToken && !headers.Authorization) {
+    headers.Authorization = `Bearer ${state.accessToken}`;
+  }
+  const res = await fetch(baseUrl() + path, { ...opts, headers });
+  let data;
+  try { data = await res.json(); } catch { data = {}; }
+  if (!res.ok) {
+    const err = new Error(data.message || `Request failed (${res.status})`);
+    err.data = data;
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+// --- Health check ---
+async function checkHealth() {
+  try {
+    await apiCall('/api/health');
+    els.statusDot.classList.add('ok');
+    els.statusDot.classList.remove('bad');
+    els.statusDot.title = 'Server is reachable';
+  } catch {
+    els.statusDot.classList.add('bad');
+    els.statusDot.classList.remove('ok');
+    els.statusDot.title = 'Cannot reach server';
+  }
+}
+checkHealth();
+els.baseUrl.addEventListener('change', checkHealth);
+
+// --- Tabs ---
+els.authTabs.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-tab]');
+  if (!btn) return;
+  els.authTabs.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const isLogin = btn.dataset.tab === 'login';
+  els.loginCard.classList.toggle('hidden', !isLogin);
+  els.registerCard.classList.toggle('hidden', isLogin);
+});
+
+// --- Session UI ---
+function renderSession() {
+  if (state.user) {
+    els.sessionBar.classList.add('show');
+    els.authTabs.classList.add('hidden');
+    els.loginCard.classList.add('hidden');
+    els.registerCard.classList.add('hidden');
+    els.protectedCard.classList.remove('hidden');
+    els.dashboardCard.classList.remove('hidden');
+    els.sessionName.textContent = state.user.name;
+    els.sessionEmail.textContent = state.user.email + (state.user.role === 'admin' ? ' · admin' : '');
+  } else {
+    els.sessionBar.classList.remove('show');
+    els.authTabs.classList.remove('hidden');
+    const activeTab = els.authTabs.querySelector('button.active');
+    const isLogin = !activeTab || activeTab.dataset.tab === 'login';
+    els.loginCard.classList.toggle('hidden', !isLogin);
+    els.registerCard.classList.toggle('hidden', isLogin);
+    els.protectedCard.classList.add('hidden');
+    els.dashboardCard.classList.add('hidden');
+    document.getElementById('profileResult').classList.remove('show');
+    document.getElementById('dashboardResult').classList.remove('show');
+  }
+}
+
+// --- Login ---
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  try {
+    const data = await apiCall('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    state.accessToken = data.accessToken;
+    state.refreshToken = data.refreshToken;
+    state.user = data.user;
+    showResult('loginResult', { message: data.message, user: data.user });
+    renderSession();
+  } catch (err) {
+    showResult('loginResult', err.data || err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// --- Register ---
+document.getElementById('registerBtn').addEventListener('click', async () => {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const btn = document.getElementById('registerBtn');
+  btn.disabled = true;
+  try {
+    const data = await apiCall('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password })
+    });
+    state.accessToken = data.accessToken;
+    state.refreshToken = data.refreshToken;
+    state.user = data.user;
+    showResult('registerResult', { message: data.message, user: data.user });
+    renderSession();
+  } catch (err) {
+    showResult('registerResult', err.data || err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// --- Profile ---
+document.getElementById('profileBtn').addEventListener('click', async () => {
+  try {
+    const data = await apiCall('/api/auth/me');
+    showResult('profileResult', data);
+  } catch (err) {
+    showResult('profileResult', err.data || err.message, true);
+  }
+});
+
+// --- Dashboard ---
+document.getElementById('dashboardBtn').addEventListener('click', async () => {
+  try {
+    const data = await apiCall('/api/users/dashboard');
+    showResult('dashboardResult', data);
+  } catch (err) {
+    showResult('dashboardResult', err.data || err.message, true);
+  }
+});
+
+// --- Logout ---
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  try {
+    await apiCall('/api/auth/logout', { method: 'POST' });
+  } catch {
+    // ignore errors on logout
+  }
+  state = { accessToken: null, refreshToken: null, user: null };
+  renderSession();
+});
+</script>
+</body>
+</html>
